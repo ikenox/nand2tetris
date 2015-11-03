@@ -14,5 +14,20 @@ CHIP Register {
     OUT out[16];
 
     PARTS:
-    // Put your code here:
+        Bit (in=in[0], out=out[0], load=load);
+        Bit (in=in[1], out=out[1], load=load);
+        Bit (in=in[2], out=out[2], load=load);
+        Bit (in=in[3], out=out[3], load=load);
+        Bit (in=in[4], out=out[4], load=load);
+        Bit (in=in[5], out=out[5], load=load);
+        Bit (in=in[6], out=out[6], load=load);
+        Bit (in=in[7], out=out[7], load=load);
+        Bit (in=in[8], out=out[8], load=load);
+        Bit (in=in[9], out=out[9], load=load);
+        Bit (in=in[10], out=out[10], load=load);
+        Bit (in=in[11], out=out[11], load=load);
+        Bit (in=in[12], out=out[12], load=load);
+        Bit (in=in[13], out=out[13], load=load);
+        Bit (in=in[14], out=out[14], load=load);
+        Bit (in=in[15], out=out[15], load=load);
 }
