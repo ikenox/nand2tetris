@@ -1,5 +1,6 @@
 *.tst
 *.out
 *.cmp
+*.hack
 
 !.gitkeep
