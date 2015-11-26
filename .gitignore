@@ -3,4 +3,6 @@
 *.cmp
 *.hack
 
+06/*/*.asm
+
 !.gitkeep
