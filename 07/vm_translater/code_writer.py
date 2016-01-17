@@ -12,10 +12,53 @@ class CodeWriter():
     def __exit__(self, exception_type, exception_value, traceback):
         self.f.close()
 
+    def write_arithmetic(self, command):
+        if command in ["add", "sub", "and", "or"]:
+            self.write_binary_operation(command)
+        elif command in ["neg", "not"]:
+            self.write_unary_operation(command)
+        elif command in ["eq", "gt", "lt"]:
+            self.write_comp_operation(command)
+
+    def write_push_pop(self, command, segment, index):
+
+        index = int(index)
+
+        if command == C_PUSH:
+            if segment == "constant":
+                self.write_codes([
+                    '@%d' % index,
+                    'D=A'
+                ])
+                self.write_push_from_d_register()
+            elif segment in ["local", "argument", "this", "that"]:
+                self.write_push_from_virtual_segment(segment, index)
+            elif segment in ["temp", "pointer"]:
+                self.write_push_from_static_segment(segment, index)
+            if segment == "static":
+                self.write_codes([
+                    "@%s.%d" % (self.current_translated_file_name, index),
+                ])
+                self.write_code('D=M')
+                self.write_push_from_d_register()
+
+        elif command == C_POP:
+            if segment in ["local", "argument", "this", "that"]:
+                self.write_pop_from_virtual_segment(segment, index)
+            elif segment in ["temp", "pointer"]:
+                self.write_pop_from_static_segment(segment, index)
+            if segment == "static":
+                self.write_pop_to_m_register()
+                self.write_codes([
+                    'D=M',
+                    '@%s.%d' % (self.current_translated_file_name, index),
+                ])
+                self.write_code('M=D')
+
     def set_current_translated_file_name(self, file_name):
         self.current_translated_file_name = file_name
 
-    def binary_operation(self, command):
+    def write_binary_operation(self, command):
         self.write_pop_to_m_register()
         self.write_code('D=M')
         self.write_pop_to_m_register()
@@ -29,7 +72,7 @@ class CodeWriter():
             self.write_code('D=D|M')
         self.write_push_from_d_register()
 
-    def unary_operation(self, command):
+    def write_unary_operation(self, command):
         self.write_codes([
             '@SP',
             'A=M-1',
@@ -39,7 +82,7 @@ class CodeWriter():
         elif command == 'not':
             self.write_code('M=!M')
 
-    def comp_operation(self, command):
+    def write_comp_operation(self, command):
         self.write_pop_to_m_register()
         self.write_code('D=M')
         self.write_pop_to_m_register()
@@ -64,154 +107,69 @@ class CodeWriter():
         ])
         self.write_push_from_d_register()
 
-    def write_arithmetic(self, command):
-        if command in ["add", "sub", "and", "or"]:
-            self.binary_operation(command)
-        elif command in ["neg", "not"]:
-            self.unary_operation(command)
-        elif command in ["eq", "gt", "lt"]:
-            self.comp_operation(command)
+    def write_push_from_virtual_segment(self, segment, index):
+        if segment == "local":
+            register_name = "LCL"
+        elif segment == "argument":
+            register_name = "ARG"
+        elif segment == "this":
+            register_name = "THIS"
+        elif segment == "that":
+            register_name = "THAT"
+        self.write_codes([
+            '@%s' % register_name,
+            'A=M'
+        ])
+        for i in range(index):
+            self.write_code('A=A+1')
+        self.write_code('D=M')
+        self.write_push_from_d_register()
 
-    def write_push_pop(self, command, segment, index):
+    def write_pop_from_virtual_segment(self, segment, index):
+        if segment == "local":
+            register_name = "LCL"
+        elif segment == "argument":
+            register_name = "ARG"
+        elif segment == "this":
+            register_name = "THIS"
+        elif segment == "that":
+            register_name = "THAT"
+        self.write_pop_to_m_register()
+        self.write_codes([
+            'D=M',
+            '@%s' % register_name,
+            'A=M'
+        ])
+        for i in range(index):
+            self.write_code('A=A+1')
+        self.write_code('M=D')
 
-        index = int(index)
+    def write_push_from_static_segment(self, segment, index):
+        if segment == "temp":
+            base_address = TEMP_BASE_ADDRESS
+        elif segment == "pointer":
+            base_address = POINTER_BASE_ADDRESS
+        self.write_codes([
+            "@%d" % base_address,
+        ])
+        for i in range(index):
+            self.write_code('A=A+1')
+        self.write_code('D=M')
+        self.write_push_from_d_register()
 
-        if command == C_PUSH:
-            if segment == "constant":
-                self.write_codes([
-                    '@%d' % index,
-                    'D=A',
-                    '@SP',
-                    'A=M',
-                    'M=D',
-                    '@SP',
-                    'M=M+1'
-                ])
-            if segment == "local":
-                self.write_codes([
-                    '@LCL',
-                    'A=M'
-                ])
-                for i in range(index):
-                    self.write_code('A=A+1')
-                self.write_code('D=M')
-                self.write_push_from_d_register()
-            if segment == "argument":
-                self.write_codes([
-                    '@ARG',
-                    'A=M'
-                ])
-                for i in range(index):
-                    self.write_code('A=A+1')
-                self.write_code('D=M')
-                self.write_push_from_d_register()
-            if segment == "this":
-                self.write_codes([
-                    '@THIS',
-                    'A=M'
-                ])
-                for i in range(index):
-                    self.write_code('A=A+1')
-                self.write_code('D=M')
-                self.write_push_from_d_register()
-            if segment == "that":
-                self.write_codes([
-                    '@THAT',
-                    'A=M'
-                ])
-                for i in range(index):
-                    self.write_code('A=A+1')
-                self.write_code('D=M')
-                self.write_push_from_d_register()
-            if segment == "temp":
-                self.write_codes([
-                    "@%d" % TEMP_BASE_ADDRESS,
-                ])
-                for i in range(index):
-                    self.write_code('A=A+1')
-                self.write_code('D=M')
-                self.write_push_from_d_register()
-            if segment == "pointer":
-                self.write_codes([
-                    "@%d" % POINTER_BASE_ADDRESS,
-                ])
-                for i in range(index):
-                    self.write_code('A=A+1')
-                self.write_code('D=M')
-                self.write_push_from_d_register()
-            if segment == "static":
-                self.write_codes([
-                    "@%s.%d" % (self.current_translated_file_name, index),
-                ])
-                self.write_code('D=M')
-                self.write_push_from_d_register()
-
-        elif command == C_POP:
-            if segment == "local":
-                self.write_pop_to_m_register()
-                self.write_codes([
-                    'D=M',
-                    '@LCL',
-                    'A=M'
-                ])
-                for i in range(index):
-                    self.write_code('A=A+1')
-                self.write_code('M=D')
-            if segment == "argument":
-                self.write_pop_to_m_register()
-                self.write_codes([
-                    'D=M',
-                    '@ARG',
-                    'A=M'
-                ])
-                for i in range(index):
-                    self.write_code('A=A+1')
-                self.write_code('M=D')
-            if segment == "this":
-                self.write_pop_to_m_register()
-                self.write_codes([
-                    'D=M',
-                    '@THIS',
-                    'A=M'
-                ])
-                for i in range(index):
-                    self.write_code('A=A+1')
-                self.write_code('M=D')
-            if segment == "that":
-                self.write_pop_to_m_register()
-                self.write_codes([
-                    'D=M',
-                    '@THAT',
-                    'A=M'
-                ])
-                for i in range(index):
-                    self.write_code('A=A+1')
-                self.write_code('M=D')
-            if segment == "temp":
-                self.write_pop_to_m_register()
-                self.write_codes([
-                    'D=M',
-                    '@%d' % TEMP_BASE_ADDRESS,
-                ])
-                for i in range(index):
-                    self.write_code('A=A+1')
-                self.write_code('M=D')
-            if segment == "pointer":
-                self.write_pop_to_m_register()
-                self.write_codes([
-                    'D=M',
-                    '@%d' % POINTER_BASE_ADDRESS,
-                ])
-                for i in range(index):
-                    self.write_code('A=A+1')
-                self.write_code('M=D')
-            if segment == "static":
-                self.write_pop_to_m_register()
-                self.write_codes([
-                    'D=M',
-                    '@%s.%d' % (self.current_translated_file_name, index),
-                ])
-                self.write_code('M=D')
+    def write_pop_from_static_segment(self, segment, index):
+        if segment == "temp":
+            base_address = TEMP_BASE_ADDRESS
+        elif segment == "pointer":
+            base_address = POINTER_BASE_ADDRESS
+        self.write_pop_to_m_register()
+        self.write_codes([
+            'D=M',
+            '@%d' % base_address,
+        ])
+        for i in range(index):
+            self.write_code('A=A+1')
+        self.write_code('M=D')
 
     def write_push_from_d_register(self):
         self.write_codes([
