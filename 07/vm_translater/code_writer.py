@@ -15,99 +15,62 @@ class CodeWriter():
     def set_current_translated_file_name(self, file_name):
         self.current_translated_file_name = file_name
 
-    def write_arithmetic(self, command):
-        if command == "add":
-            self.write_pop_to_m_register()
-            self.write_code('D=M')
-            self.write_pop_to_m_register()
+    def binary_operation(self, command):
+        self.write_pop_to_m_register()
+        self.write_code('D=M')
+        self.write_pop_to_m_register()
+        if command == 'add':
             self.write_code('D=D+M')
-            self.write_push_from_d_register()
-        elif command == "sub":
-            self.write_pop_to_m_register()
-            self.write_code('D=M')
-            self.write_pop_to_m_register()
+        elif command == 'sub':
             self.write_code('D=M-D')
-            self.write_push_from_d_register()
-        elif command == "and":
-            self.write_pop_to_m_register()
-            self.write_code('D=M')
-            self.write_pop_to_m_register()
+        elif command == 'and':
             self.write_code('D=D&M')
-            self.write_push_from_d_register()
-        elif command == "or":
-            self.write_pop_to_m_register()
-            self.write_code('D=M')
-            self.write_pop_to_m_register()
+        elif command == 'or':
             self.write_code('D=D|M')
-            self.write_push_from_d_register()
-        elif command == "neg":
-            self.write_codes([
-                '@SP',
-                'A=M-1',
-                'M=-M'
-            ])
-        elif command == "not":
-            self.write_codes([
-                '@SP',
-                'A=M-1',
-                'M=!M'
-            ])
-        elif command == "eq":
-            self.write_pop_to_m_register()
-            self.write_code('D=M')
-            self.write_pop_to_m_register()
-            l1 = self.get_new_label()
-            l2 = self.get_new_label()
-            self.write_codes([
-                'D=M-D',
-                "@%s" % l1,
-                'D;JEQ',
-                'D=0',
-                "@%s" % l2,
-                '0;JMP',
-                "(%s)" % l1,
-                'D=-1',
-                "(%s)" % l2,
-            ])
-            self.write_push_from_d_register()
+        self.write_push_from_d_register()
+
+    def unary_operation(self, command):
+        self.write_codes([
+            '@SP',
+            'A=M-1',
+        ])
+        if command == 'neg':
+            self.write_code('M=-M')
+        elif command == 'not':
+            self.write_code('M=!M')
+
+    def comp_operation(self, command):
+        self.write_pop_to_m_register()
+        self.write_code('D=M')
+        self.write_pop_to_m_register()
+        l1 = self.get_new_label()
+        l2 = self.get_new_label()
+        if command == "eq":
+            comp_type = "JEQ"
         elif command == "gt":
-            self.write_pop_to_m_register()
-            self.write_code('D=M')
-            self.write_pop_to_m_register()
-            l1 = self.get_new_label()
-            l2 = self.get_new_label()
-            self.write_codes([
-                'D=M-D',
-                "@%s" % l1,
-                'D;JGT',
-                'D=0',
-                "@%s" % l2,
-                '0;JMP',
-                "(%s)" % l1,
-                'D=-1',
-                "(%s)" % l2,
-            ])
-            self.write_push_from_d_register()
+            comp_type = "JGT"
         elif command == "lt":
-            self.write_pop_to_m_register()
-            self.write_code('D=M')
-            self.write_pop_to_m_register()
-            l1 = self.get_new_label()
-            l2 = self.get_new_label()
-            self.write_codes([
-                'D=M-D',
-                "@%s" % l1,
-                'D;JLT',
-                'D=0',
-                "@%s" % l2,
-                '0;JMP',
-                "(%s)" % l1,
-                'D=-1',
-                "(%s)" % l2,
-            ])
-            self.write_push_from_d_register()
-        else:
-            raise Exception("Unknown operator")
+            comp_type = "JLT"
+        self.write_codes([
+            'D=M-D',
+            "@%s" % l1,
+            'D;%s' % comp_type,
+            'D=0',
+            "@%s" % l2,
+            '0;JMP',
+            "(%s)" % l1,
+            'D=-1',
+            "(%s)" % l2,
+        ])
+        self.write_push_from_d_register()
+
+    def write_arithmetic(self, command):
+        if command in ["add", "sub", "and", "or"]:
+            self.binary_operation(command)
+        elif command in ["neg", "not"]:
+            self.unary_operation(command)
+        elif command in ["eq", "gt", "lt"]:
+            self.comp_operation(command)
 
     def write_push_pop(self, command, segment, index):
 

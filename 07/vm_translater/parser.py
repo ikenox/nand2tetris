@@ -47,13 +47,9 @@ class Parser():
             return C_CALL
         elif self.current_command[0] in ['add', 'sub', 'neg', 'eq', 'gt', 'lt', 'and', 'or', 'not']:
             return C_ARITHMETIC
-        else:
-            raise Exception('Unknown command')
 
     def arg1(self):
-        if self.command_type() == C_RETURN:
-            raise Exception()
-        elif self.command_type() == C_ARITHMETIC:
+        if self.command_type() == C_ARITHMETIC:
             return self.current_command[0]
         else:
             return self.current_command[1]
