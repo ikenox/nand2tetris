@@ -1,6 +1,6 @@
-from parser import HackParser, A_COMMAND, C_COMMAND, L_COMMAND
+from parser import *
 from symbol_table import SymbolTable
-import code
+import code_writer
 import re
 import argparse
 import os.path
@@ -55,7 +55,7 @@ def main():
                             bincode = "0" + int2bin(address, 15)
 
                 elif cmd_type == C_COMMAND:
-                    bincode = '111' + code.comp(hp.comp()) + code.dest(hp.dest()) + code.jump(hp.jump())
+                    bincode = '111' + code_writer.comp(hp.comp()) + code_writer.dest(hp.dest()) + code_writer.jump(hp.jump())
 
                 if cmd_type != L_COMMAND:
                     wf.write(bincode + '\n')
