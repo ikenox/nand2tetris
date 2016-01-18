@@ -4,7 +4,8 @@ from constants import *
 class CodeWriter():
     def __init__(self, filepath):
         self.f = open(filepath, 'w')
-        self.label_num = 0
+        self.if_label_num = 0
+        self.return_label_num = 0
 
         self.write_init()
 
@@ -88,8 +89,8 @@ class CodeWriter():
         self.write_pop_to_m_register()
         self.write_code('D=M')
         self.write_pop_to_m_register()
-        l1 = self.get_new_anonymus_label()
-        l2 = self.get_new_anonymus_label()
+        l1 = self.get_new_if_label()
+        l2 = self.get_new_if_label()
         if command == "eq":
             comp_type = "JEQ"
         elif command == "gt":
@@ -195,9 +196,13 @@ class CodeWriter():
     def write_codes(self, codes):
         self.write_code('\n'.join(codes))
 
-    def get_new_anonymus_label(self):
-        self.label_num += 1
-        return 'ANONIM_LABEL_' + str(self.label_num)
+    def get_new_if_label(self):
+        self.if_label_num += 1
+        return '_IF_LABEL_' + str(self.if_label_num)
+
+    def get_new_return_label(self):
+        self.return_label_num += 1
+        return '_RETURN_LABEL_' + str(self.return_label_num)
 
     def write_named_label(self, label):
         self.write_code("(%s)" % self.get_label_name(label))
@@ -209,9 +214,8 @@ class CodeWriter():
             return "%s$%s" % ("null", label)
 
     def write_init(self):
-        pass
-        # self.write_set_sp(256)
-        # self.write_call('main')
+        self.write_set_sp(256)
+        self.write_call("Sys.init", 0)
 
     def write_set_sp(self, address):
         self.write_codes([
@@ -235,13 +239,54 @@ class CodeWriter():
             'D;JNE'
         ])
 
-    def write_call(self, function_name):
-
-        ## iroiro
+    def write_call(self, function_name, num_of_args):
+        return_label = self.get_new_return_label()
+        self.write_codes([
+            '// return-label',
+            '@%s' % return_label,
+            'D=A'
+        ])
+        self.write_push_from_d_register()  # push return-address
+        self.write_codes([
+            '@LCL',
+            'D=M',
+        ])
+        self.write_push_from_d_register()
+        self.write_codes([
+            '@ARG',
+            'D=M',
+        ])
+        self.write_push_from_d_register()
+        self.write_codes([
+            '@THIS',
+            'D=M',
+        ])
+        self.write_push_from_d_register()
+        self.write_codes([
+            '@THAT',
+            'D=M',
+        ])
+        self.write_push_from_d_register()
 
         self.write_codes([
-            '@(%s)' % function_name,
-            '0;JMP'
+            '@SP',
+            'D=M',
+            '@5',
+            'D=D-A',
+            '@%d' % int(num_of_args),
+            'D=D-A',
+            '@ARG',
+            'M=D',  # ARG = SP - n - 5
+            '@SP',
+            'D=M',
+            '@LCL',
+            'M=D'  # LCL = SP
+        ])
+
+        self.write_codes([
+            '@%s' % function_name,
+            '0;JMP',  # goto function
+            '(%s)' % return_label
         ])
 
     def write_return(self):
@@ -263,7 +308,7 @@ class CodeWriter():
             'D=M',
             '@ARG',
             'A=M',  # M = *ARG
-            'M=D', # *ARG = pop()
+            'M=D',  # *ARG = pop()
 
             '@ARG',
             'D=M+1',
@@ -296,7 +341,7 @@ class CodeWriter():
 
             '@R14',
             'A=M',
-            '0;JMP'     # goto return-address
+            '0;JMP'  # goto return-address
         ])
 
     def write_function(self, function_name, num_of_locals):
@@ -306,3 +351,5 @@ class CodeWriter():
         ])
         for i in range(int(num_of_locals)):
             self.write_push_from_d_register()
+
+        self.current_function_name = function_name
