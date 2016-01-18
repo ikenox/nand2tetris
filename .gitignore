@@ -4,8 +4,13 @@
 *.hack
 
 06/*/*.asm
+
 07/*.asm
 07/*/*.asm
 07/*/*/*.asm
+
+08/*.asm
+08/*/*.asm
+08/*/*/*.asm
 
 !.gitkeep
