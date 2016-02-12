@@ -1,0 +1,95 @@
+/**
+ * Implements the drawing game.
+ */
+class DrawingGame {
+
+    // The pen
+    field Pen pen;
+
+    // The pen's movement direction
+    field int direction; // 0=none,1=up,2=down,3=left,4=right
+
+    /** Constructs a new Drawing Game. */
+    constructor DrawingGame new() {
+        let pen = Pen.new(0, 0, 5);
+
+        return this;
+    }
+
+    /** Deallocates the object's memory. */
+    method void dispose() {
+        do pen.dispose();
+        do Memory.deAlloc(this);
+        return;
+    }
+
+    /** Starts the game. Handles inputs from the user that control
+     *  the pen's movement and direction. */
+    method void run() {
+        var char key;
+        var boolean exit;
+
+        let exit = false;
+
+
+        while (~exit) {
+        
+            // waits for a key to be pressed.
+            while (key = 0) {
+                let key = Keyboard.keyPressed();
+                if (key = 90) {
+                    do pen.decSize();
+                }
+                if (key = 88) {
+                    do pen.incSize();
+                }
+            }
+
+            // waits for the key to be released.
+            while (~(key = 0)) {
+                let key = Keyboard.keyPressed();
+
+                if (key = 81) {
+                    let exit = true;
+                }
+                if (key = 131) {
+                    let direction = 1;
+                    do movePen();
+                }
+                if (key = 133) {
+                    let direction = 2;
+                    do movePen();
+                }
+                if (key = 130) {
+                    let direction = 3;
+                    do movePen();
+                }
+                if (key = 132) {
+                    let direction = 4;
+                    do movePen();
+                }
+            }
+        }
+            
+        return;
+	}
+
+    /** Moves the pen by 2 pixels in the current direction. */
+    method void movePen() {
+        if (direction = 1) {
+            do pen.moveUp();
+        }
+        if (direction = 2) {
+            do pen.moveDown();
+        }
+        if (direction = 3) {
+            do pen.moveLeft();
+        }
+        if (direction = 4) {
+            do pen.moveRight();
+        }
+
+        do Sys.wait(10); // Delays the next movement.
+        return;
+    }
+}

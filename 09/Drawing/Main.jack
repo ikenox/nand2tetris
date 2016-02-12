@@ -1,0 +1,16 @@
+/**
+ * The Main class initializes a new Drawing game and starts it.
+ */
+class Main {
+
+    /** Initializes a new game and starts it. */    
+    function void main() {
+        var DrawingGame game;
+
+        let game = DrawingGame.new();
+        do game.run();
+        do game.dispose();
+
+        return;
+    }
+}

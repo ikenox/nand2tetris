@@ -13,4 +13,7 @@
 08/*/*.asm
 08/*/*/*.asm
 
+09/Square
+09/*/*.vm
+
 !.gitkeep
