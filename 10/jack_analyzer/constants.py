@@ -1,120 +1,6 @@
 import re
+from token import *
 
-
-class KeyWords:
-    CLASS = 1
-    METHOD = 2
-    FUNCTION = 3
-    CONSTRUCTOR = 4
-    INT = 5
-    BOOLEAN = 6
-    CHAR = 7
-    VOID = 8
-    VAR = 9
-    STATIC = 10
-    FIELD = 11
-    LET = 12
-    DO = 13
-    IF = 14
-    ELSE = 15
-    WHILE = 16
-    RETURN = 17
-    TRUE = 18
-    FALSE = 19
-    NULL = 20
-    THIS = 21
-
-class Symbols:
-    LEFT_CURLY_BRACKET = 22
-    RIGHT_CURLY_BRACKET = 23
-    LEFT_ROUND_BRACKET = 24
-    RIGHT_ROUND_BRACKET = 25
-    LEFT_BOX_BRACKET = 26
-    RIGHT_BOX_BRACKET = 27
-    DOT = 25
-    COMMA = 26
-    SEMI_COLON = 27
-    PLUS = 28
-    MINUS = 29
-    MULTI = 30
-    DIV = 31
-    AND = 32
-    PIPE = 33
-    LESS_THAN = 34
-    GREATER_THAN = 35
-    EQUAL = 36
-    TILDE = 37
-    ASTERISK = 38
-
-class Constants:
-
-    class TokenType:
-        SYMBOL = 1
-        IDENTIFIER = 2
-        INT_CONST = 3
-        STRING_CONST = 4
-        KEYWORD = 5
-        COMMENT_START = 6
-        COMMENT_END = 6
-
-    class Tokens:
-        KEYWORDS = {
-            'class': KeyWords.CLASS,
-            'constructor': KeyWords.CONSTRUCTOR,
-            'function': KeyWords.FUNCTION,
-            'method': KeyWords.METHOD,
-            'field': KeyWords.FIELD,
-            'static': KeyWords.STATIC,
-            'var': KeyWords.VAR,
-            'int': KeyWords.INT,
-            'char': KeyWords.CHAR,
-            'boolean': KeyWords.BOOLEAN,
-            'void': KeyWords.VOID,
-            'true': KeyWords.TRUE,
-            'false': KeyWords.FALSE,
-            'null': KeyWords.NULL,
-            'this': KeyWords.THIS,
-            'let': KeyWords.LET,
-            'do': KeyWords.DO,
-            'if': KeyWords.IF,
-            'else': KeyWords.ELSE,
-            'while': KeyWords.WHILE,
-            'return': KeyWords.RETURN
-        }
-
-        SYMBOLS = [
-            '{',
-            '}',
-            '(',
-            ')',
-            '[',
-            ']',
-            '.',
-            ',',
-            ';',
-            '+',
-            '-',
-            '*',
-            '/',
-            '&',
-            '|',
-            '<',
-            '>',
-            '=',
-            '~'
-        ]
-
-        LINE_COMMENT_START = '//'
-
-        COMMENT_START = '/*'
-
-        COMMENT_END = '*/'
-
-        IDENTIFIER_PATTERN = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
-
-        INTEGER_PATTERN = re.compile(r'^[0-9]+$')
-
-        STRING_PATTERN = re.compile(r'^".*"$')
 
 class TokenType:
     SYMBOL = 1
@@ -125,55 +11,95 @@ class TokenType:
     COMMENT_START = 6
     COMMENT_END = 6
 
-class Token:
-    def __init__(self):
-        pass
 
 class Tokens:
+    CLASS = Keyword('class')
+    METHOD = Keyword('method')
+    FUNCTION = Keyword('function')
+    CONSTRUCTOR = Keyword('constructor')
+    INT = Keyword('int')
+    BOOLEAN = Keyword('boolean')
+    CHAR = Keyword('char')
+    VOID = Keyword('void')
+    VAR = Keyword('var')
+    STATIC = Keyword('static')
+    FIELD = Keyword('field')
+    LET = Keyword('let')
+    DO = Keyword('do')
+    IF = Keyword('if')
+    ELSE = Keyword('else')
+    WHILE = Keyword('while')
+    RETURN = Keyword('return')
+    TRUE = Keyword('true')
+    FALSE = Keyword('false')
+    NULL = Keyword('null')
+    THIS = Keyword('this')
+
+    LEFT_CURLY_BRACKET = Symbol('{')
+    RIGHT_CURLY_BRACKET = Symbol('}')
+    LEFT_ROUND_BRACKET = Symbol('(')
+    RIGHT_ROUND_BRACKET = Symbol(')')
+    LEFT_BOX_BRACKET = Symbol('[')
+    RIGHT_BOX_BRACKET = Symbol(']')
+    DOT = Symbol('.')
+    COMMA = Symbol(',')
+    SEMI_COLON = Symbol(';')
+    PLUS = Symbol('+')
+    MINUS = Symbol('-')
+    MULTI = Symbol('*')
+    DIV = Symbol('/')
+    AND = Symbol('&')
+    PIPE = Symbol('|')
+    LESS_THAN = Symbol('<')
+    GREATER_THAN = Symbol('>')
+    EQUAL = Symbol('=')
+    TILDE = Symbol('~')
+
+class TokenMap:
     KEYWORDS = {
-        'class': KeyWords.CLASS,
-        'constructor': KeyWords.CONSTRUCTOR,
-        'function': KeyWords.FUNCTION,
-        'method': KeyWords.METHOD,
-        'field': KeyWords.FIELD,
-        'static': KeyWords.STATIC,
-        'var': KeyWords.VAR,
-        'int': KeyWords.INT,
-        'char': KeyWords.CHAR,
-        'boolean': KeyWords.BOOLEAN,
-        'void': KeyWords.VOID,
-        'true': KeyWords.TRUE,
-        'false': KeyWords.FALSE,
-        'null': KeyWords.NULL,
-        'this': KeyWords.THIS,
-        'let': KeyWords.LET,
-        'do': KeyWords.DO,
-        'if': KeyWords.IF,
-        'else': KeyWords.ELSE,
-        'while': KeyWords.WHILE,
-        'return': KeyWords.RETURN
+        'class': Tokens.CLASS,
+        'constructor': Tokens.CONSTRUCTOR,
+        'function': Tokens.FUNCTION,
+        'method': Tokens.METHOD,
+        'field': Tokens.FIELD,
+        'static': Tokens.STATIC,
+        'var': Tokens.VAR,
+        'int': Tokens.INT,
+        'char': Tokens.CHAR,
+        'boolean': Tokens.BOOLEAN,
+        'void': Tokens.VOID,
+        'true': Tokens.TRUE,
+        'false': Tokens.FALSE,
+        'null': Tokens.NULL,
+        'this': Tokens.THIS,
+        'let': Tokens.LET,
+        'do': Tokens.DO,
+        'if': Tokens.IF,
+        'else': Tokens.ELSE,
+        'while': Tokens.WHILE,
+        'return': Tokens.RETURN
     }
 
     SYMBOLS = {
-        '{': Symbols.LEFT_CURLY_BRACKET,
-        '}': Symbols.RIGHT_CURLY_BRACKET,
-        '(': Symbols.LEFT_ROUND_BRACKET,
-        ')': Symbols.RIGHT_ROUND_BRACKET,
-        '[': Symbols.LEFT_BOX_BRACKET,
-        ']': Symbols.RIGHT_BOX_BRACKET,
-        '.': Symbols.DOT,
-        ',': Symbols.COMMA,
-        ';': Symbols.SEMI_COLON,
-        '+': Symbols.PLUS,
-        '-': Symbols.MINUS,
-        '*': Symbols.ASTERISK,
-        '/': Symbols.DIV,
-        '&': Symbols.AND,
-        '|': Symbols.PIPE,
-        '<': Symbols.LESS_THAN,
-        '>': Symbols.GREATER_THAN,
-        '=': Symbols.EQUAL,
-        '~': Symbols.TILDE
+        '{': Tokens.LEFT_CURLY_BRACKET,
+        '}': Tokens.RIGHT_CURLY_BRACKET,
+        '(': Tokens.LEFT_ROUND_BRACKET,
+        ')': Tokens.RIGHT_ROUND_BRACKET,
+        '[': Tokens.LEFT_BOX_BRACKET,
+        ']': Tokens.RIGHT_BOX_BRACKET,
+        '.': Tokens.DOT,
+        ',': Tokens.COMMA,
+        ';': Tokens.SEMI_COLON,
+        '+': Tokens.PLUS,
+        '-': Tokens.MINUS,
+        '*': Tokens.MULTI,
+        '/': Tokens.DIV,
+        '&': Tokens.AND,
+        '|': Tokens.PIPE,
+        '<': Tokens.LESS_THAN,
+        '>': Tokens.GREATER_THAN,
+        '=': Tokens.EQUAL,
+        '~': Tokens.TILDE
     }
 
     LINE_COMMENT_START = '//'
