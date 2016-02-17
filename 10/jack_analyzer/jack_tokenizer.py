@@ -118,6 +118,12 @@ class JackTokenizer():
             self.current_token = None
         return self.current_token
 
+    def see_next(self):
+        if len(self.remained_tokens) > 0:
+            return self.remained_tokens[0]
+        else:
+            return None
+
     def judge_token(self, judged_token):
         if judged_token in TOKEN_MAP:
             return TOKEN_MAP[judged_token]

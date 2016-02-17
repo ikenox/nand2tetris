@@ -40,8 +40,7 @@ class IntegerConstant(Token):
     type = TokenType.INT_CONST
 
     def __init__(self, token):
-        Token.__init__(self, token)
-        self.token = int(token)
+        Token.__init__(self, int(token))
         if self.token > 32767:
             raise Exception('too large integer')
 
