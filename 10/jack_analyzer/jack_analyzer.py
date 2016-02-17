@@ -2,8 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from constants import *
-from jack_tokenizer import JackTokenizer
-from code_writer import CodeWriter
+from compilation_engine import CompilationEngine
 import glob
 import argparse
 import os.path
@@ -29,8 +28,7 @@ def main():
 
 
 def compile(filepath):
-    with JackTokenizer(filepath) as tokenizer:
-        print "====%s====" % filepath
+    CompilationEngine.compile(filepath)
 
 
 if __name__ == '__main__':

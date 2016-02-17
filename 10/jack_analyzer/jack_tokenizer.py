@@ -10,11 +10,11 @@ token_convert = {
 class JackTokenizer():
     def __init__(self, filepath):
         self.current_token = None
-        self.remained_line = ''
         self.linenum = 0
-        self.readfile = open(filepath)
-        self.tokens = []
+        self.remained_line = ''
+        self.remained_tokens = []
 
+        self.readfile = open(filepath)
         with open(filepath[:-5] + "T.myImpl.xml", 'w') as writef:
             writef.write('<tokens>\n')
             while 1:
@@ -35,7 +35,7 @@ class JackTokenizer():
                     elif tt == Constants.TokenType.INT_CONST:
                         elem_name = 'integerConstant'
 
-                    self.tokens.append(token)
+                    self.remained_tokens.append(token)
 
                     if token in token_convert:
                         token = token_convert[token]
@@ -44,11 +44,6 @@ class JackTokenizer():
                 else:
                     break
             writef.write('</tokens>\n')
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exception_type, exception_value, traceback):
         self.readfile.close()
 
     def _readline(self):
@@ -69,7 +64,7 @@ class JackTokenizer():
 
                 self._readline()
 
-                if self.remained_line == None:
+                if not self.remained_line:
                     return None
 
             if self.remained_line:
@@ -120,7 +115,11 @@ class JackTokenizer():
         raise Exception('%s at line %d' % (msg, self.linenum))
 
     def advance(self):
-        return self.tokens.pop(0)
+        if len(self.remained_tokens) > 0:
+            self.current_token = self.remained_tokens.pop(0)
+        else:
+            self.current_token = None
+        return self.current_token
 
     def judge_token_type(self, judged_token):
         if judged_token in Constants.Tokens.KEYWORDS:
@@ -140,3 +139,40 @@ class JackTokenizer():
             return Constants.TokenType.COMMENT_START
         else:
             return None
+
+    def token_type(self):
+        return self.judge_token_type(self.current_token)
+
+    def keyword(self):
+        if self.token_type() == Constants.TokenType.STRING_CONST:
+            return Constants.Tokens.KEYWORDS[self.current_token]
+        else:
+            raise Exception('Token type isn\'t keyword')
+
+    def symbol(self):
+        if self.token_type() == Constants.TokenType.STRING_CONST:
+            return self.current_token
+        else:
+            raise Exception('Token type isn\'t symbol')
+
+    def identifier(self):
+        if self.token_type() == Constants.TokenType.STRING_CONST:
+            return self.current_token
+        else:
+            raise Exception('Token type isn\'t identifier')
+
+    def int_val(self):
+        if self.token_type() == Constants.TokenType.STRING_CONST:
+            return int(self.current_token)
+        else:
+            raise Exception('Token type isn\'t integer')
+
+    def string_val(self):
+        if self.token_type() == Constants.TokenType.STRING_CONST:
+            return self.current_token[1:-1]
+        else:
+            raise Exception('Token type isn\'t string')
+
+    def close(self):
+        self.readfile.close()
+
