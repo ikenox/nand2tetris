@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-from constants import *
+from const import *
 from compilation_engine import CompilationEngine
 import glob
 import argparse
@@ -28,7 +28,8 @@ def main():
 
 
 def compile(filepath):
-    CompilationEngine.compile(filepath)
+    with CompilationEngine(filepath) as ce:
+        ce.compile()
 
 
 if __name__ == '__main__':
