@@ -24,6 +24,27 @@ class KeyWords:
     NULL = 20
     THIS = 21
 
+class Symbols:
+    LEFT_CURLY_BRACKET = 22
+    RIGHT_CURLY_BRACKET = 23
+    LEFT_ROUND_BRACKET = 24
+    RIGHT_ROUND_BRACKET = 25
+    LEFT_BOX_BRACKET = 26
+    RIGHT_BOX_BRACKET = 27
+    DOT = 25
+    COMMA = 26
+    SEMI_COLON = 27
+    PLUS = 28
+    MINUS = 29
+    MULTI = 30
+    DIV = 31
+    AND = 32
+    PIPE = 33
+    LESS_THAN = 34
+    GREATER_THAN = 35
+    EQUAL = 36
+    TILDE = 37
+    ASTERISK = 38
 
 class Constants:
 
@@ -104,6 +125,10 @@ class TokenType:
     COMMENT_START = 6
     COMMENT_END = 6
 
+class Token:
+    def __init__(self):
+        pass
+
 class Tokens:
     KEYWORDS = {
         'class': KeyWords.CLASS,
@@ -129,27 +154,27 @@ class Tokens:
         'return': KeyWords.RETURN
     }
 
-    SYMBOLS = [
-        '{',
-        '}',
-        '(',
-        ')',
-        '[',
-        ']',
-        '.',
-        ',',
-        ';',
-        '+',
-        '-',
-        '*',
-        '/',
-        '&',
-        '|',
-        '<',
-        '>',
-        '=',
-        '~'
-    ]
+    SYMBOLS = {
+        '{': Symbols.LEFT_CURLY_BRACKET,
+        '}': Symbols.RIGHT_CURLY_BRACKET,
+        '(': Symbols.LEFT_ROUND_BRACKET,
+        ')': Symbols.RIGHT_ROUND_BRACKET,
+        '[': Symbols.LEFT_BOX_BRACKET,
+        ']': Symbols.RIGHT_BOX_BRACKET,
+        '.': Symbols.DOT,
+        ',': Symbols.COMMA,
+        ';': Symbols.SEMI_COLON,
+        '+': Symbols.PLUS,
+        '-': Symbols.MINUS,
+        '*': Symbols.ASTERISK,
+        '/': Symbols.DIV,
+        '&': Symbols.AND,
+        '|': Symbols.PIPE,
+        '<': Symbols.LESS_THAN,
+        '>': Symbols.GREATER_THAN,
+        '=': Symbols.EQUAL,
+        '~': Symbols.TILDE
+    }
 
     LINE_COMMENT_START = '//'
 
