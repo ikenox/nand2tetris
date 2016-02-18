@@ -31,7 +31,6 @@ class Keyword(Token):
 class Identifier(Token):
     type = TokenType.IDENTIFIER
 
-
 class Constant(Token):
     pass
 

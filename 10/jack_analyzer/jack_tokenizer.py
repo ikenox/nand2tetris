@@ -118,9 +118,9 @@ class JackTokenizer():
             self.current_token = None
         return self.current_token
 
-    def see_next(self):
-        if len(self.remained_tokens) > 0:
-            return self.remained_tokens[0]
+    def see_next(self,idx=0):
+        if len(self.remained_tokens) > idx:
+            return self.remained_tokens[idx]
         else:
             return None
 
