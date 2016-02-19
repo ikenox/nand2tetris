@@ -107,7 +107,6 @@ class CompilationEngine():
         self.compile_var_name()
         while self.next_is(Tokens.COMMA):
             self.compile_symbol(Tokens.COMMA)
-            self.compile_type()
             self.compile_var_name()
         self.compile_symbol(Tokens.SEMI_COLON)
         self.write_element_end('varDec')
@@ -199,14 +198,67 @@ class CompilationEngine():
                 self.compile_symbol(Tokens.COMMA)
                 self.compile_expression()
         self.write_element_end('expressionList')
-        pass
 
     def compile_expression(self):
         self.write_element_start('expression')
-        self.write_element_start('term')
-        self.compile_identifier()  # Todo
-        self.write_element_end('term')
+        self.compile_term()
+        while self.next_is([
+            Tokens.PLUS,
+            Tokens.MINUS,
+            Tokens.MULTI,
+            Tokens.DIV,
+            Tokens.AND,
+            Tokens.PIPE,
+            Tokens.LESS_THAN,
+            Tokens.GREATER_THAN,
+            Tokens.EQUAL]):
+            self.compile_symbol([
+                Tokens.PLUS,
+                Tokens.MINUS,
+                Tokens.MULTI,
+                Tokens.DIV,
+                Tokens.AND,
+                Tokens.PIPE,
+                Tokens.LESS_THAN,
+                Tokens.GREATER_THAN,
+                Tokens.EQUAL])
+            self.compile_term()
         self.write_element_end('expression')
+
+    def compile_term(self):
+        self.write_element_start('term')
+
+        if self.next_type_is(TokenType.INT_CONST):
+            self.compile_integer_constant()
+        elif self.next_type_is(TokenType.STRING_CONST):
+            self.compile_string_constant()
+        elif self.next_is([Tokens.NULL, Tokens.THIS, Tokens.TRUE, Tokens.FALSE]):
+            self.compile_keyword([Tokens.NULL, Tokens.THIS, Tokens.TRUE, Tokens.FALSE])
+        elif self.next_type_is(TokenType.IDENTIFIER):
+
+            if self.next_is(Tokens.LEFT_BOX_BRACKET, idx=1):
+                self.compile_var_name()
+                self.compile_symbol(Tokens.LEFT_BOX_BRACKET)
+                self.compile_expression()
+                self.compile_symbol(Tokens.RIGHT_BOX_BRACKET)
+            elif self.next_is([Tokens.LEFT_ROUND_BRACKET, Tokens.DOT], idx=1):
+                self.compile_subroutine_call()
+            else:
+                self.compile_var_name()
+
+        elif self.next_is(Tokens.LEFT_ROUND_BRACKET):
+            self.compile_symbol(Tokens.LEFT_ROUND_BRACKET)
+            self.compile_expression()
+            self.compile_symbol(Tokens.RIGHT_ROUND_BRACKET)
+        elif self.next_is([Tokens.TILDE, Tokens.MINUS]):
+            self.compile_symbol([Tokens.TILDE, Tokens.MINUS])
+            self.compile_term()
+        else:
+            self.raise_syntax_error('')
+        self.write_element_end('term')
+
+    def next_type_is(self, token_type):
+        return self.tokenizer.see_next().type == token_type
 
     def compile_type(self):
         if self.next_is([Tokens.INT, Tokens.CHAR, Tokens.BOOLEAN]):
@@ -219,15 +271,9 @@ class CompilationEngine():
 
     def next_is(self, tokens, idx=0):
         if type(tokens) == list:
-            if self.tokenizer.see_next(idx=idx) in tokens:
-                return True
-            else:
-                return False
+            return self.tokenizer.see_next(idx=idx) in tokens
         else:
-            if self.tokenizer.see_next(idx=idx) == tokens:
-                return True
-            else:
-                return False
+            return self.tokenizer.see_next(idx=idx) == tokens
 
     def next_is_class_var_dec(self):
         return self.next_is([Tokens.STATIC, Tokens.FIELD])
@@ -235,12 +281,18 @@ class CompilationEngine():
     def next_is_subroutine_dec(self):
         return self.next_is([Tokens.CONSTRUCTOR, Tokens.FUNCTION, Tokens.METHOD])
 
-    def compile_symbol(self, token):
+    def compile_symbol(self, tokens):
         self.tokenizer.advance()
-        if self.tokenizer.current_token == token:
-            self.write_element('symbol', self.tokenizer.current_token.token_escaped)
+        if type(tokens) == list:
+            if self.tokenizer.current_token in tokens:
+                self.write_element('symbol', self.tokenizer.current_token.token_escaped)
+            else:
+                self.raise_syntax_error('')
         else:
-            self.raise_syntax_error('')
+            if self.tokenizer.current_token == tokens:
+                self.write_element('symbol', self.tokenizer.current_token.token_escaped)
+            else:
+                self.raise_syntax_error('')
 
     def compile_keyword(self, tokens):
         self.tokenizer.advance()
@@ -271,7 +323,7 @@ class CompilationEngine():
 
     def compile_string_constant(self):
         self.tokenizer.advance()
-        if isinstance(self.tokenizer.current_token, IntegerConstant):
+        if isinstance(self.tokenizer.current_token, StringConstant):
             self.write_element('stringConstant', self.tokenizer.current_token.token_escaped)
         else:
             self.raise_syntax_error('')

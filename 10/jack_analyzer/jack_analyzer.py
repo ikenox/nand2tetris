@@ -29,6 +29,7 @@ def main():
 
 def compile(filepath):
     with CompilationEngine(filepath) as ce:
+        print "compiling %s ..." % filepath
         ce.compile()
 
 
