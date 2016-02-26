@@ -1,8 +1,7 @@
-from const import IdentifierType
+from const import IdentifierKind
 
 
 class SymbolTable:
-
     def __init__(self):
         self.static_table = {}
         self.field_table = {}
@@ -16,23 +15,27 @@ class SymbolTable:
                 self.kind = kind
                 self.index = index
 
-        if identifier_type in IdentifierType.STATIC:
+        if identifier_type in IdentifierKind.STATIC:
             self.static_table[name] = Identifier(identifier_type, kind, self.var_count(kind))
-        elif identifier_type in IdentifierType.FIELD:
+        elif identifier_type in IdentifierKind.FIELD:
             self.field_table[name] = Identifier(identifier_type, kind, self.var_count(kind))
-        elif identifier_type in IdentifierType.ARG:
+        elif identifier_type in IdentifierKind.ARG:
             self.arg_table[name] = Identifier(identifier_type, kind, self.var_count(kind))
-        elif identifier_type in IdentifierType.VAR:
+        elif identifier_type in IdentifierKind.VAR:
             self.var_table[name] = Identifier(identifier_type, kind, self.var_count(kind))
 
+    def start_subroutine(self):
+        self.static_table = {}
+        self.field_table = {}
+
     def var_count(self, kind):
-        if kind in IdentifierType.STATIC:
+        if kind in IdentifierKind.STATIC:
             return len(self.static_table)
-        elif kind in IdentifierType.FIELD:
+        elif kind in IdentifierKind.FIELD:
             return len(self.field_table)
-        elif kind in IdentifierType.ARG:
+        elif kind in IdentifierKind.ARG:
             return len(self.arg_table)
-        elif kind in IdentifierType.VAR:
+        elif kind in IdentifierKind.VAR:
             return len(self.var_table)
 
     def kind_of(self, name):

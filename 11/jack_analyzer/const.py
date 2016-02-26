@@ -10,7 +10,7 @@ class TokenType:
     COMMENT_START = 6
     COMMENT_END = 6
 
-class IdentifierType:
+class IdentifierKind:
     STATIC = 0
     FIELD = 1
     ARG = 2

@@ -1,11 +1,13 @@
 from const import *
 from jack_tokenizer import JackTokenizer
+from symbol_table import SymbolTable
 
 
 class CompilationEngine():
     def __init__(self, filepath):
         self.wf = open(filepath[:-5] + ".myImpl.xml", 'w')
         self.tokenizer = JackTokenizer(filepath)
+        self.symbol_table = SymbolTable()
 
     def __enter__(self):
         return self
@@ -36,8 +38,18 @@ class CompilationEngine():
     def compile_class_var_dec(self):
         self.write_element_start('classVarDec')
 
-        self.compile_keyword([Tokens.STATIC, Tokens.FIELD])
-        self.compile_type()
+        token_kind = self.compile_keyword([Tokens.STATIC, Tokens.FIELD])
+        kind = None
+        if token_kind == Tokens.STATIC:
+            kind = IdentifierKind.STATIC
+        elif token_kind == Tokens.STATIC:
+            kind = IdentifierKind.FIELD
+        else:
+            self.raise_syntax_error('Unexpected token')
+
+        type_token = self.compile_type()
+
+        self.symbol_table.define(self.tokenizer.see_next().token, kind, type_token.token)
         self.compile_var_name()
 
         while self.next_is(Tokens.COMMA):
@@ -48,7 +60,22 @@ class CompilationEngine():
 
         self.write_element_end('classVarDec')
 
+    def compile_var_dec(self):
+
+        self.write_element_start('varDec')
+        self.compile_keyword(Tokens.VAR)
+        type_token = self.compile_type()
+        self.symbol_table.define(self.tokenizer.see_next().token, IdentifierKind.VAR, type_token.token)
+        self.compile_var_name()
+        while self.next_is(Tokens.COMMA):
+            self.compile_symbol(Tokens.COMMA)
+            self.compile_var_name()
+        self.compile_symbol(Tokens.SEMI_COLON)
+        self.write_element_end('varDec')
+
     def compile_subroutine_dec(self):
+        self.symbol_table.start_subroutine()
+
         self.write_element_start('subroutineDec')
 
         self.compile_keyword([Tokens.CONSTRUCTOR, Tokens.FUNCTION, Tokens.METHOD])
@@ -78,7 +105,8 @@ class CompilationEngine():
 
         if self.tokenizer.see_next() in [Tokens.INT, Tokens.CHAR, Tokens.BOOLEAN] or isinstance(
                 self.tokenizer.see_next(), Identifier):
-            self.compile_type()
+            type_token = self.compile_type()
+            self.symbol_table.define(self.tokenizer.see_next().token, IdentifierKind.ARG, type_token.token)
             self.compile_var_name()
 
             while self.next_is(Tokens.COMMA):
@@ -99,17 +127,6 @@ class CompilationEngine():
         self.compile_symbol(Tokens.RIGHT_CURLY_BRACKET)
 
         self.write_element_end('subroutineBody')
-
-    def compile_var_dec(self):
-        self.write_element_start('varDec')
-        self.compile_keyword(Tokens.VAR)
-        self.compile_type()
-        self.compile_var_name()
-        while self.next_is(Tokens.COMMA):
-            self.compile_symbol(Tokens.COMMA)
-            self.compile_var_name()
-        self.compile_symbol(Tokens.SEMI_COLON)
-        self.write_element_end('varDec')
 
     def compile_statements(self):
         self.write_element_start('statements')
@@ -261,10 +278,16 @@ class CompilationEngine():
         return self.tokenizer.see_next().type == token_type
 
     def compile_type(self):
+
+        type_token = self.tokenizer.see_next()
+
         if self.next_is([Tokens.INT, Tokens.CHAR, Tokens.BOOLEAN]):
             self.compile_keyword([Tokens.INT, Tokens.CHAR, Tokens.BOOLEAN])
         elif isinstance(self.tokenizer.see_next(), Identifier):
             self.compile_identifier()
+        else:
+            self.raise_syntax_error('Unexpected token')
+        return type_token
 
     def next_is_statement(self):
         return self.next_is([Tokens.LET, Tokens.IF, Tokens.WHILE, Tokens.DO, Tokens.RETURN])
@@ -299,18 +322,25 @@ class CompilationEngine():
         if type(tokens) == list:
             if self.tokenizer.current_token in tokens:
                 self.write_element('keyword', self.tokenizer.current_token.token_escaped)
+                return self.tokenizer.current_token
             else:
                 self.raise_syntax_error('')
         else:
             if self.tokenizer.current_token == tokens:
                 self.write_element('keyword', self.tokenizer.current_token.token_escaped)
+                return self.tokenizer.current_token
             else:
                 self.raise_syntax_error('')
 
     def compile_identifier(self):
         self.tokenizer.advance()
         if isinstance(self.tokenizer.current_token, Identifier):
-            self.write_element('identifier', self.tokenizer.current_token.token_escaped)
+            identifier_str = self.tokenizer.current_token.token_escaped
+            self.write_element(
+                'identifier',
+                (identifier_str, self.symbol_table.kind_of(identifier_str), self.symbol_table.type_of(identifier_str),
+                 self.symbol_table.index_of(identifier_str))
+            )
         else:
             self.raise_syntax_error('')
 
