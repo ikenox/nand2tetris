@@ -1,11 +1,13 @@
 from const import *
 from jack_tokenizer import JackTokenizer
+from symbol_table import SymbolTable
 
 
 class CompilationEngine():
     def __init__(self, filepath):
         self.wf = open(filepath[:-5] + ".myImpl.xml", 'w')
         self.tokenizer = JackTokenizer(filepath)
+        self.symbol_table = SymbolTable()
 
     def __enter__(self):
         return self
@@ -17,6 +19,7 @@ class CompilationEngine():
         self.compile_class()
 
     def compile_class(self):
+
         self.write_element_start('class')
 
         self.compile_keyword([Tokens.CLASS])
@@ -36,19 +39,41 @@ class CompilationEngine():
     def compile_class_var_dec(self):
         self.write_element_start('classVarDec')
 
-        self.compile_keyword([Tokens.STATIC, Tokens.FIELD])
-        self.compile_type()
-        self.compile_var_name()
+        token = self.compile_keyword([Tokens.STATIC, Tokens.FIELD])
+        kind = None
+        if token == Tokens.STATIC:
+            kind = IdentifierKind.STATIC
+        elif token == Tokens.FIELD:
+            kind = IdentifierKind.FIELD
+        else:
+            self.raise_syntax_error('Unexpected token')
+
+        type_token = self.compile_type()
+        self.compile_var_name(declaration=True, type=type_token.token, kind=kind)
 
         while self.next_is(Tokens.COMMA):
             self.compile_symbol(Tokens.COMMA)
-            self.compile_var_name()
+            self.compile_var_name(declaration=True, type=type_token.token, kind=kind)
 
         self.compile_symbol(Tokens.SEMI_COLON)
 
         self.write_element_end('classVarDec')
 
+    def compile_var_dec(self):
+
+        self.write_element_start('varDec')
+        self.compile_keyword(Tokens.VAR)
+        type_token = self.compile_type()
+        self.compile_var_name(declaration=True, type=type_token.token, kind=IdentifierKind.VAR)
+        while self.next_is(Tokens.COMMA):
+            self.compile_symbol(Tokens.COMMA)
+            self.compile_var_name(declaration=True, type=type_token.token, kind=IdentifierKind.VAR)
+        self.compile_symbol(Tokens.SEMI_COLON)
+        self.write_element_end('varDec')
+
     def compile_subroutine_dec(self):
+        self.symbol_table.start_subroutine()
+
         self.write_element_start('subroutineDec')
 
         self.compile_keyword([Tokens.CONSTRUCTOR, Tokens.FUNCTION, Tokens.METHOD])
@@ -65,26 +90,39 @@ class CompilationEngine():
         self.write_element_end('subroutineDec')
 
     def compile_subroutine_name(self):
+        self.write_identifier_info('category: subroutine')
         self.compile_identifier()
 
     def compile_class_name(self):
+        self.write_identifier_info('category: class')
         self.compile_identifier()
 
-    def compile_var_name(self):
+    def compile_var_name(self, declaration=False, type=None, kind=None):
+        if declaration:
+            self.symbol_table.define(self.tokenizer.see_next().token, type, kind)
+        # print "==============="
+        # print self.symbol_table.arg_table, self.symbol_table.var_table, self.symbol_table.static_table, self.symbol_table.field_table
+        # print self.tokenizer.see_next().token, kind
+
+        self.write_identifier_info('declaration: %s, kind: %s, index: %d' % (
+            declaration, self.symbol_table.kind_of(self.tokenizer.see_next().token), self.symbol_table.index_of(self.tokenizer.see_next().token)))
         self.compile_identifier()
+
+    def write_identifier_info(self, value):
+        self.write_element('IdentifierInfo', value)
 
     def compile_parameter_list(self):
         self.write_element_start('parameterList')
 
         if self.tokenizer.see_next() in [Tokens.INT, Tokens.CHAR, Tokens.BOOLEAN] or isinstance(
                 self.tokenizer.see_next(), Identifier):
-            self.compile_type()
-            self.compile_var_name()
+            type_token = self.compile_type()
+            self.compile_var_name(declaration=True, type=type_token.token, kind=IdentifierKind.ARG)
 
             while self.next_is(Tokens.COMMA):
                 self.compile_symbol(Tokens.COMMA)
-                self.compile_type()
-                self.compile_var_name()
+                type_token = self.compile_type()
+                self.compile_var_name(declaration=True, type=type_token.token, kind=IdentifierKind.ARG)
 
         self.write_element_end('parameterList')
 
@@ -99,17 +137,6 @@ class CompilationEngine():
         self.compile_symbol(Tokens.RIGHT_CURLY_BRACKET)
 
         self.write_element_end('subroutineBody')
-
-    def compile_var_dec(self):
-        self.write_element_start('varDec')
-        self.compile_keyword(Tokens.VAR)
-        self.compile_type()
-        self.compile_var_name()
-        while self.next_is(Tokens.COMMA):
-            self.compile_symbol(Tokens.COMMA)
-            self.compile_var_name()
-        self.compile_symbol(Tokens.SEMI_COLON)
-        self.write_element_end('varDec')
 
     def compile_statements(self):
         self.write_element_start('statements')
@@ -183,7 +210,11 @@ class CompilationEngine():
             self.compile_expression_list()
             self.compile_symbol(Tokens.RIGHT_ROUND_BRACKET)
         else:
-            self.compile_identifier()
+            identifier_str = self.tokenizer.see_next().token
+            if self.symbol_table.kind_of(identifier_str) == IdentifierKind.VAR:
+                self.compile_var_name()
+            else:
+                self.compile_class_name()
             self.compile_symbol(Tokens.DOT)
             self.compile_subroutine_name()
             self.compile_symbol(Tokens.LEFT_ROUND_BRACKET)
@@ -261,10 +292,14 @@ class CompilationEngine():
         return self.tokenizer.see_next().type == token_type
 
     def compile_type(self):
+
+        type_token = self.tokenizer.see_next()
+
         if self.next_is([Tokens.INT, Tokens.CHAR, Tokens.BOOLEAN]):
             self.compile_keyword([Tokens.INT, Tokens.CHAR, Tokens.BOOLEAN])
-        elif isinstance(self.tokenizer.see_next(), Identifier):
-            self.compile_identifier()
+        else:
+            self.compile_class_name()
+        return type_token
 
     def next_is_statement(self):
         return self.next_is([Tokens.LET, Tokens.IF, Tokens.WHILE, Tokens.DO, Tokens.RETURN])
@@ -299,18 +334,24 @@ class CompilationEngine():
         if type(tokens) == list:
             if self.tokenizer.current_token in tokens:
                 self.write_element('keyword', self.tokenizer.current_token.token_escaped)
+                return self.tokenizer.current_token
             else:
                 self.raise_syntax_error('')
         else:
             if self.tokenizer.current_token == tokens:
                 self.write_element('keyword', self.tokenizer.current_token.token_escaped)
+                return self.tokenizer.current_token
             else:
                 self.raise_syntax_error('')
 
     def compile_identifier(self):
         self.tokenizer.advance()
         if isinstance(self.tokenizer.current_token, Identifier):
-            self.write_element('identifier', self.tokenizer.current_token.token_escaped)
+            identifier_str = self.tokenizer.current_token.token_escaped
+            self.write_element(
+                'identifier',
+                identifier_str
+            )
         else:
             self.raise_syntax_error('')
 
