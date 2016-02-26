@@ -10,6 +10,12 @@ class TokenType:
     COMMENT_START = 6
     COMMENT_END = 6
 
+class IdentifierType:
+    STATIC = 0
+    FIELD = 1
+    ARG = 2
+    VAR = 3
+
 
 class Token:
     def __init__(self, token, token_escaped=None):
