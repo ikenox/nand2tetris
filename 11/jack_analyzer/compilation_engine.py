@@ -1,13 +1,14 @@
 from const import *
 from jack_tokenizer import JackTokenizer
 from symbol_table import SymbolTable
-
+from code_writer import CodeWriter
 
 class CompilationEngine():
-    def __init__(self, filepath):
+    def __init__(self, filepath,code_writer):
         self.wf = open(filepath[:-5] + ".myImpl.xml", 'w')
         self.tokenizer = JackTokenizer(filepath)
         self.symbol_table = SymbolTable()
+        self.cw = code_writer
 
     def __enter__(self):
         return self
