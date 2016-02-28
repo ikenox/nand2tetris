@@ -261,7 +261,8 @@ class CompilationEngine():
         self.write_element_start('term')
 
         if self.next_type_is(TokenType.INT_CONST):
-            self.compile_integer_constant()
+            integer = self.compile_integer_constant()
+            self.cw.write_push(Segment.CONST,integer)
         elif self.next_type_is(TokenType.STRING_CONST):
             self.compile_string_constant()
         elif self.next_is([Tokens.NULL, Tokens.THIS, Tokens.TRUE, Tokens.FALSE]):
@@ -360,6 +361,7 @@ class CompilationEngine():
         self.tokenizer.advance()
         if isinstance(self.tokenizer.current_token, IntegerConstant):
             self.write_element('integerConstant', self.tokenizer.current_token.token_escaped)
+            return self.tokenizer.current_token.token_escaped
         else:
             self.raise_syntax_error('')
 

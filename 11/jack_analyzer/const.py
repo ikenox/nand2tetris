@@ -1,6 +1,30 @@
 import re
 from token import *
 
+
+class Segment:
+    CONST = 0
+    ARG = 1
+    LOCAL = 2
+    STATIC = 3
+    THIS = 4
+    THAT = 5
+    POINTER = 6
+    TEMP = 7
+
+
+class Command:
+    ADD = 0
+    SUB = 1
+    NEG = 2
+    EQ = 3
+    GT = 4
+    LT = 5
+    AND = 6
+    OR = 7
+    NOT = 8
+
+
 class TokenType:
     SYMBOL = 1
     IDENTIFIER = 2
@@ -9,6 +33,7 @@ class TokenType:
     KEYWORD = 5
     COMMENT_START = 6
     COMMENT_END = 6
+
 
 class IdentifierKind:
     STATIC = 0
@@ -36,6 +61,7 @@ class Keyword(Token):
 
 class Identifier(Token):
     type = TokenType.IDENTIFIER
+
 
 class Constant(Token):
     pass
@@ -100,6 +126,7 @@ class Tokens:
     COMMENT_START = Symbol('/*')
     COMMENT_END = Symbol('*/')
     LINE_COMMENT_START = Symbol('//')
+
 
 TOKEN_MAP = {
     'class': Tokens.CLASS,
