@@ -125,8 +125,8 @@ class JackTokenizer():
             return None
 
     def judge_token(self, judged_token):
-        if judged_token in TOKEN_MAP:
-            return TOKEN_MAP[judged_token]
+        if judged_token in STR_TO_TOKEN:
+            return STR_TO_TOKEN[judged_token]
         elif INTEGER_PATTERN.match(judged_token):
             try:
                 return IntegerConstant(judged_token)

@@ -128,7 +128,7 @@ class Tokens:
     LINE_COMMENT_START = Symbol('//')
 
 
-TOKEN_MAP = {
+STR_TO_TOKEN = {
     'class': Tokens.CLASS,
     'constructor': Tokens.CONSTRUCTOR,
     'function': Tokens.FUNCTION,
