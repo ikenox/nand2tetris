@@ -5,7 +5,7 @@ from const import *
 from compilation_engine import CompilationEngine
 import glob
 import argparse
-from code_writer import CodeWriter
+from vm_writer import VmWriter
 
 def main():
     parser = argparse.ArgumentParser()
@@ -27,7 +27,7 @@ def main():
 
 
 def compile(filepath):
-    with CodeWriter(filepath[:-5] + ".vm") as code_writer:
+    with VmWriter(filepath[:-5] + ".vm") as code_writer:
         with CompilationEngine(filepath, code_writer) as ce:
             print "compiling %s ..." % filepath
             ce.compile()

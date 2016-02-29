@@ -4,11 +4,12 @@ from symbol_table import SymbolTable
 
 
 class CompilationEngine():
-    def __init__(self, filepath, code_writer):
+    def __init__(self, filepath, vm_writer):
         self.wf = open(filepath[:-5] + ".myImpl.xml", 'w')
         self.tokenizer = JackTokenizer(filepath)
         self.symbol_table = SymbolTable()
-        self.cw = code_writer
+        self.vmw = vm_writer
+        self.compiled_class_name = None
 
     def __enter__(self):
         return self
@@ -24,7 +25,7 @@ class CompilationEngine():
         self.write_element_start('class')
 
         self.compile_keyword([Tokens.CLASS])
-        self.compile_class_name()
+        self.compiled_class_name = self.compile_class_name().token
         self.compile_symbol(Tokens.LEFT_CURLY_BRACKET)
 
         while self.next_is_class_var_dec():
@@ -82,21 +83,21 @@ class CompilationEngine():
             self.compile_keyword(Tokens.VOID)
         else:
             self.compile_type()
-        self.compile_subroutine_name()
+        subroutine_name = self.compile_subroutine_name().token
         self.compile_symbol(Tokens.LEFT_ROUND_BRACKET)
         self.compile_parameter_list()
         self.compile_symbol(Tokens.RIGHT_ROUND_BRACKET)
-        self.compile_subroutine_body()
+        self.compile_subroutine_body(subroutine_name)
 
         self.write_element_end('subroutineDec')
 
     def compile_subroutine_name(self):
         self.write_identifier_info('category: subroutine')
-        self.compile_identifier()
+        return self.compile_identifier()
 
     def compile_class_name(self):
         self.write_identifier_info('category: class')
-        self.compile_identifier()
+        return self.compile_identifier()
 
     def compile_var_name(self, declaration=False, type=None, kind=None):
         if declaration:
@@ -108,7 +109,7 @@ class CompilationEngine():
         self.write_identifier_info('declaration: %s, kind: %s, index: %d' % (
             declaration, self.symbol_table.kind_of(self.tokenizer.see_next().token),
             self.symbol_table.index_of(self.tokenizer.see_next().token)))
-        self.compile_identifier()
+        return self.compile_identifier()
 
     def write_identifier_info(self, value):
         self.write_element('IdentifierInfo', value)
@@ -128,17 +129,23 @@ class CompilationEngine():
 
         self.write_element_end('parameterList')
 
-    def compile_subroutine_body(self):
+    def compile_subroutine_body(self, subroutine_name):
         self.write_element_start('subroutineBody')
 
         self.compile_symbol(Tokens.LEFT_CURLY_BRACKET)
+        local_num = 0
         while self.next_is(Tokens.VAR):
             self.compile_var_dec()
+            local_num += 1
+
+        self.vmw.write_function("%s.%s" % (self.compiled_class_name, subroutine_name), local_num)
 
         self.compile_statements()
         self.compile_symbol(Tokens.RIGHT_CURLY_BRACKET)
 
         self.write_element_end('subroutineBody')
+
+        return local_num
 
     def compile_statements(self):
         self.write_element_start('statements')
@@ -201,7 +208,11 @@ class CompilationEngine():
             self.compile_keyword(Tokens.RETURN)
             if not self.next_is(Tokens.SEMI_COLON):
                 self.compile_expression()
+            else:
+                self.vmw.write_push(Segment.CONST, 0)
+
             self.compile_symbol(Tokens.SEMI_COLON)
+            self.vmw.write_return()
 
             self.write_element_end('returnStatement')
 
@@ -219,35 +230,38 @@ class CompilationEngine():
                 self.compile_var_name()
                 self.compile_symbol(Tokens.DOT)
                 self.compile_subroutine_name()
-                self.cw.write_call()
                 self.compile_symbol(Tokens.LEFT_ROUND_BRACKET)
                 # self.cw.write_push(Segment., 0)
                 self.compile_expression_list()
                 self.compile_symbol(Tokens.RIGHT_ROUND_BRACKET)
                 # self.cw.write_call(CLASS.subroutine, argnum+1)
             else:
-                self.compile_class_name()
+                classname = self.compile_class_name().token
                 self.compile_symbol(Tokens.DOT)
-                self.compile_subroutine_name()
-                self.cw.write_call()
+                subroutinename = self.compile_subroutine_name().token
                 self.compile_symbol(Tokens.LEFT_ROUND_BRACKET)
-                self.compile_expression_list()
+                argnum = self.compile_expression_list()
                 self.compile_symbol(Tokens.RIGHT_ROUND_BRACKET)
-                self.cw.write_call(CLASS.subroutine, argnum)
+                self.vmw.write_call("%s.%s" % (classname, subroutinename), argnum)
 
     def write_set_this(self, obj):
-        self.cw.write_push(obj)
-        self.cw.write_pop(Segment.POINTER, 0)
-        #TODO
+        self.vmw.write_push(obj)
+        self.vmw.write_pop(Segment.POINTER, 0)
+        # TODO
 
     def compile_expression_list(self):
         self.write_element_start('expressionList')
+        argnum = 0
         if not self.next_is(Tokens.RIGHT_ROUND_BRACKET):
             self.compile_expression()
+            argnum += 1
             while self.next_is(Tokens.COMMA):
                 self.compile_symbol(Tokens.COMMA)
                 self.compile_expression()
+                argnum += 1
         self.write_element_end('expressionList')
+
+        return argnum
 
     def compile_expression(self):
         self.write_element_start('expression')
@@ -274,23 +288,23 @@ class CompilationEngine():
                 Tokens.EQUAL])
             self.compile_term()
             if op_token == Tokens.PLUS:
-                self.cw.write_arithmetic_by_token(Command.ADD)
+                self.vmw.write_arithmetic(Command.ADD)
             elif op_token == Tokens.MINUS:
-                self.cw.write_arithmetic_by_token(Command.SUB)
+                self.vmw.write_arithmetic(Command.SUB)
             elif op_token == Tokens.MULTI:
-                self.cw.write_call('Math.multiply', 2)
+                self.vmw.write_call('Math.multiply', 2)
             elif op_token == Tokens.DIV:
-                self.cw.write_call('Math.divide', 2)
+                self.vmw.write_call('Math.divide', 2)
             elif op_token == Tokens.AND:
-                self.cw.write_arithmetic_by_token(Command.AND)
+                self.vmw.write_arithmetic(Command.AND)
             elif op_token == Tokens.PIPE:
-                self.cw.write_arithmetic_by_token(Command.OR)
+                self.vmw.write_arithmetic(Command.OR)
             elif op_token == Tokens.LESS_THAN:
-                self.cw.write_arithmetic_by_token(Command.LT)
+                self.vmw.write_arithmetic(Command.LT)
             elif op_token == Tokens.GREATER_THAN:
-                self.cw.write_arithmetic_by_token(Command.GT)
+                self.vmw.write_arithmetic(Command.GT)
             elif op_token == Tokens.EQUAL:
-                self.cw.write_arithmetic_by_token(Command.EQ)
+                self.vmw.write_arithmetic(Command.EQ)
 
         self.write_element_end('expression')
 
@@ -299,7 +313,7 @@ class CompilationEngine():
 
         if self.next_type_is(TokenType.INT_CONST):
             value_str = self.compile_integer_constant()
-            self.cw.write_push(Segment.CONST, value_str)
+            self.vmw.write_push(Segment.CONST, value_str)
         elif self.next_type_is(TokenType.STRING_CONST):
             self.compile_string_constant()
         elif self.next_is([Tokens.NULL, Tokens.THIS, Tokens.TRUE, Tokens.FALSE]):
@@ -393,6 +407,7 @@ class CompilationEngine():
                 'identifier',
                 identifier_str
             )
+            return self.tokenizer.current_token
         else:
             self.raise_syntax_error('')
 

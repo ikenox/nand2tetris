@@ -1,7 +1,7 @@
 from const import *
 
 
-class CodeWriter():
+class VmWriter():
     def __init__(self, filepath):
         self.f = open(filepath, 'w')
 
@@ -66,7 +66,7 @@ class CodeWriter():
         if segment == Segment.ARG:
             return 'arg'
         elif segment == Segment.CONST:
-            return 'const'
+            return 'constant'
         elif segment == Segment.LOCAL:
             return 'local'
         elif segment == Segment.POINTER:
