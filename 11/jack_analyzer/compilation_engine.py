@@ -88,7 +88,7 @@ class CompilationEngine():
 
         self.write_element_start('subroutineDec')
 
-        self.compile_keyword([Tokens.CONSTRUCTOR, Tokens.FUNCTION, Tokens.METHOD])
+        token = self.compile_keyword([Tokens.CONSTRUCTOR, Tokens.FUNCTION, Tokens.METHOD])
         if self.tokenizer.see_next() == Tokens.VOID:
             self.compile_keyword(Tokens.VOID)
         else:
@@ -97,7 +97,7 @@ class CompilationEngine():
         self.compile_symbol(Tokens.LEFT_ROUND_BRACKET)
         self.compile_parameter_list()
         self.compile_symbol(Tokens.RIGHT_ROUND_BRACKET)
-        self.compile_subroutine_body(subroutine_name)
+        self.compile_subroutine_body(subroutine_name, token)
 
         self.write_element_end('subroutineDec')
 
@@ -121,9 +121,9 @@ class CompilationEngine():
             elif kind == IdentifierKind.VAR:
                 self.vmw.write_push(Segment.LOCAL, self.symbol_table.index_of(self.tokenizer.see_next().token))
             elif kind == IdentifierKind.FIELD:
-                # TODO field,static
-                pass
-            elif kind==IdentifierKind.STATIC:
+                self.vmw.write_push(Segment.THIS, self.symbol_table.index_of(self.tokenizer.see_next().token))
+            elif kind == IdentifierKind.STATIC:
+                # TODO static
                 pass
 
         self.write_identifier_info('declaration: %s, kind: %s, index: %d' % (
@@ -149,7 +149,7 @@ class CompilationEngine():
 
         self.write_element_end('parameterList')
 
-    def compile_subroutine_body(self, subroutine_name):
+    def compile_subroutine_body(self, subroutine_name, subroutine_dec_token):
         self.write_element_start('subroutineBody')
 
         self.compile_symbol(Tokens.LEFT_CURLY_BRACKET)
@@ -159,6 +159,18 @@ class CompilationEngine():
             local_num += var_num
 
         self.vmw.write_function("%s.%s" % (self.compiled_class_name, subroutine_name), local_num)
+
+        if subroutine_dec_token == Tokens.METHOD:
+            self.vmw.write_push(Segment.ARG, 0)
+            self.vmw.write_pop(Segment.POINTER, 0)
+        elif subroutine_dec_token == Tokens.CONSTRUCTOR:
+            self.vmw.write_push(Segment.CONST, self.symbol_table.var_count(IdentifierKind.FIELD))
+            self.vmw.write_call('Memory.alloc', 1)
+            self.vmw.write_pop(Segment.POINTER, 0)
+        elif subroutine_dec_token == Tokens.FUNCTION:
+            pass
+        else:
+            self.raise_syntax_error('Invalid token')
 
         self.compile_statements()
         self.compile_symbol(Tokens.RIGHT_CURLY_BRACKET)
@@ -194,7 +206,9 @@ class CompilationEngine():
                 self.vmw.write_pop(Segment.LOCAL, self.symbol_table.index_of(let_var))
             elif kind == IdentifierKind.ARG:
                 self.vmw.write_pop(Segment.ARG, self.symbol_table.index_of(let_var))
-                # TODO static,field
+            elif kind == IdentifierKind.FIELD:
+                self.vmw.write_pop(Segment.THIS, self.symbol_table.index_of(let_var))
+                # TODO static
 
         elif self.next_is(Tokens.IF):
             self.write_element_start('ifStatement')
@@ -261,23 +275,31 @@ class CompilationEngine():
 
     def compile_subroutine_call(self):
         if self.next_is(Tokens.LEFT_ROUND_BRACKET, idx=1):
-            self.compile_subroutine_name()
+            subroutinename = self.compile_subroutine_name().token
             self.compile_symbol(Tokens.LEFT_ROUND_BRACKET)
-            # self.cw.write_push(Segment.POINTER, 0)
-            self.compile_expression_list()
+            self.vmw.write_push(Segment.POINTER, 0)
+            argnum = self.compile_expression_list()
             self.compile_symbol(Tokens.RIGHT_ROUND_BRACKET)
-            # self.cw.write_call(CLASS.subroutine, argnum+1)
+            self.vmw.write_call("%s.%s" % (self.compiled_class_name, subroutinename), argnum + 1)
         else:
             identifier_str = self.tokenizer.see_next().token
-            if self.symbol_table.kind_of(identifier_str) == IdentifierKind.VAR:
-                self.compile_var_name()
+            if self.symbol_table.kind_of(identifier_str):
+                instance_name = self.compile_var_name().token
                 self.compile_symbol(Tokens.DOT)
-                self.compile_subroutine_name()
+                subroutinename = self.compile_subroutine_name().token
                 self.compile_symbol(Tokens.LEFT_ROUND_BRACKET)
-                # self.cw.write_push(Segment., 0)
-                self.compile_expression_list()
+                kind = self.symbol_table.kind_of(instance_name)
+                if kind == IdentifierKind.ARG:
+                    self.vmw.write_push(Segment.ARG, self.symbol_table.index_of(instance_name))
+                elif kind == IdentifierKind.VAR:
+                    self.vmw.write_push(Segment.LOCAL, self.symbol_table.index_of(instance_name))
+                elif kind == IdentifierKind.FIELD:
+                    self.vmw.write_push(Segment.THIS, self.symbol_table.index_of(instance_name))
+                elif kind == IdentifierKind.STATIC:
+                    pass  # TODO static
+                argnum = self.compile_expression_list()
                 self.compile_symbol(Tokens.RIGHT_ROUND_BRACKET)
-                # self.cw.write_call(CLASS.subroutine, argnum+1)
+                self.vmw.write_call("%s.%s" % (self.symbol_table.type_of(instance_name), subroutinename), argnum + 1)
             else:
                 classname = self.compile_class_name().token
                 self.compile_symbol(Tokens.DOT)
@@ -286,11 +308,6 @@ class CompilationEngine():
                 argnum = self.compile_expression_list()
                 self.compile_symbol(Tokens.RIGHT_ROUND_BRACKET)
                 self.vmw.write_call("%s.%s" % (classname, subroutinename), argnum)
-
-    def write_set_this(self, obj):
-        self.vmw.write_push(obj)
-        self.vmw.write_pop(Segment.POINTER, 0)
-        # TODO
 
     def compile_expression_list(self):
         self.write_element_start('expressionList')
