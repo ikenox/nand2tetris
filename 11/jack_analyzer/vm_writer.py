@@ -64,7 +64,7 @@ class VmWriter():
     @classmethod
     def _get_segment_str(cls, segment):
         if segment == Segment.ARG:
-            return 'arg'
+            return 'argument'
         elif segment == Segment.CONST:
             return 'constant'
         elif segment == Segment.LOCAL:

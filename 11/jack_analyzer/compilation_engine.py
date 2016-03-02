@@ -10,12 +10,17 @@ class CompilationEngine():
         self.symbol_table = SymbolTable()
         self.vmw = vm_writer
         self.compiled_class_name = None
+        self.label_num = 0
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.wf.close()
+
+    def get_new_label(self):
+        self.label_num += 1
+        return 'LABEL_%d' % self.label_num
 
     def compile(self):
         self.compile_class()
@@ -66,12 +71,17 @@ class CompilationEngine():
         self.write_element_start('varDec')
         self.compile_keyword(Tokens.VAR)
         type_token = self.compile_type()
+        var_num = 0
         self.compile_var_name(declaration=True, type=type_token.token, kind=IdentifierKind.VAR)
+        var_num += 1
         while self.next_is(Tokens.COMMA):
             self.compile_symbol(Tokens.COMMA)
             self.compile_var_name(declaration=True, type=type_token.token, kind=IdentifierKind.VAR)
+            var_num += 1
         self.compile_symbol(Tokens.SEMI_COLON)
         self.write_element_end('varDec')
+
+        return var_num
 
     def compile_subroutine_dec(self):
         self.symbol_table.start_subroutine()
@@ -99,12 +109,22 @@ class CompilationEngine():
         self.write_identifier_info('category: class')
         return self.compile_identifier()
 
-    def compile_var_name(self, declaration=False, type=None, kind=None):
+    def compile_var_name(self, declaration=False, type=None, kind=None, let=False):
         if declaration:
             self.symbol_table.define(self.tokenizer.see_next().token, type, kind)
-        # print "==============="
-        # print self.symbol_table.arg_table, self.symbol_table.var_table, self.symbol_table.static_table, self.symbol_table.field_table
-        # print self.tokenizer.see_next().token, kind
+        elif let:
+            pass
+        else:
+            kind = self.symbol_table.kind_of(self.tokenizer.see_next().token)
+            if kind == IdentifierKind.ARG:
+                self.vmw.write_push(Segment.ARG, self.symbol_table.index_of(self.tokenizer.see_next().token))
+            elif kind == IdentifierKind.VAR:
+                self.vmw.write_push(Segment.LOCAL, self.symbol_table.index_of(self.tokenizer.see_next().token))
+            elif kind == IdentifierKind.FIELD:
+                # TODO field,static
+                pass
+            elif kind==IdentifierKind.STATIC:
+                pass
 
         self.write_identifier_info('declaration: %s, kind: %s, index: %d' % (
             declaration, self.symbol_table.kind_of(self.tokenizer.see_next().token),
@@ -135,8 +155,8 @@ class CompilationEngine():
         self.compile_symbol(Tokens.LEFT_CURLY_BRACKET)
         local_num = 0
         while self.next_is(Tokens.VAR):
-            self.compile_var_dec()
-            local_num += 1
+            var_num = self.compile_var_dec()
+            local_num += var_num
 
         self.vmw.write_function("%s.%s" % (self.compiled_class_name, subroutine_name), local_num)
 
@@ -159,15 +179,22 @@ class CompilationEngine():
         if self.next_is(Tokens.LET):
             self.write_element_start('letStatement')
             self.compile_keyword(Tokens.LET)
-            self.compile_var_name()
+            let_var = self.compile_var_name(let=True).token
             if self.next_is(Tokens.LEFT_BOX_BRACKET):
                 self.compile_symbol(Tokens.LEFT_BOX_BRACKET)
                 self.compile_expression()
+                # TODO let list[i]
                 self.compile_symbol(Tokens.RIGHT_BOX_BRACKET)
             self.compile_symbol(Tokens.EQUAL)
             self.compile_expression()
             self.compile_symbol(Tokens.SEMI_COLON)
             self.write_element_end('letStatement')
+            kind = self.symbol_table.kind_of(let_var)
+            if kind == IdentifierKind.VAR:
+                self.vmw.write_pop(Segment.LOCAL, self.symbol_table.index_of(let_var))
+            elif kind == IdentifierKind.ARG:
+                self.vmw.write_pop(Segment.ARG, self.symbol_table.index_of(let_var))
+                # TODO static,field
 
         elif self.next_is(Tokens.IF):
             self.write_element_start('ifStatement')
@@ -175,25 +202,40 @@ class CompilationEngine():
             self.compile_symbol(Tokens.LEFT_ROUND_BRACKET)
             self.compile_expression()
             self.compile_symbol(Tokens.RIGHT_ROUND_BRACKET)
+            self.vmw.write_arithmetic(Command.NOT)
+            l1 = self.get_new_label()
+            l2 = self.get_new_label()
+            self.vmw.write_if(l1)
             self.compile_symbol(Tokens.LEFT_CURLY_BRACKET)
             self.compile_statements()
             self.compile_symbol(Tokens.RIGHT_CURLY_BRACKET)
+            self.vmw.write_goto(l2)
+            self.vmw.write_label(l1)
             if self.next_is(Tokens.ELSE):
                 self.compile_keyword(Tokens.ELSE)
                 self.compile_symbol(Tokens.LEFT_CURLY_BRACKET)
                 self.compile_statements()
                 self.compile_symbol(Tokens.RIGHT_CURLY_BRACKET)
+            self.vmw.write_label(l2)
             self.write_element_end('ifStatement')
+
 
         elif self.next_is(Tokens.WHILE):
             self.write_element_start('whileStatement')
+            l1 = self.get_new_label()
+            l2 = self.get_new_label()
             self.compile_keyword(Tokens.WHILE)
+            self.vmw.write_label(l1)
             self.compile_symbol(Tokens.LEFT_ROUND_BRACKET)
             self.compile_expression()
             self.compile_symbol(Tokens.RIGHT_ROUND_BRACKET)
+            self.vmw.write_arithmetic(Command.NOT)
+            self.vmw.write_if(l2)
             self.compile_symbol(Tokens.LEFT_CURLY_BRACKET)
             self.compile_statements()
             self.compile_symbol(Tokens.RIGHT_CURLY_BRACKET)
+            self.vmw.write_goto(l1)
+            self.vmw.write_label(l2)
             self.write_element_end('whileStatement')
 
         elif self.next_is(Tokens.DO):
@@ -202,6 +244,7 @@ class CompilationEngine():
             self.compile_subroutine_call()
             self.compile_symbol(Tokens.SEMI_COLON)
             self.write_element_end('doStatement')
+            self.vmw.write_pop(Segment.TEMP, 0)
 
         elif self.next_is(Tokens.RETURN):
             self.write_element_start('returnStatement')
@@ -316,11 +359,22 @@ class CompilationEngine():
             self.vmw.write_push(Segment.CONST, value_str)
         elif self.next_type_is(TokenType.STRING_CONST):
             self.compile_string_constant()
-        elif self.next_is([Tokens.NULL, Tokens.THIS, Tokens.TRUE, Tokens.FALSE]):
-            self.compile_keyword([Tokens.NULL, Tokens.THIS, Tokens.TRUE, Tokens.FALSE])
+        elif self.next_is(Tokens.NULL):
+            self.compile_keyword(Tokens.NULL)
+            self.vmw.write_push(Segment.CONST, 0)
+        elif self.next_is(Tokens.THIS):
+            self.compile_keyword(Tokens.THIS)
+            self.vmw.write_push(Segment.POINTER, 0)
+        elif self.next_is(Tokens.TRUE):
+            self.compile_keyword(Tokens.TRUE)
+            self.vmw.write_push(Segment.CONST, 0)
+            self.vmw.write_arithmetic(Command.NOT)
+        elif self.next_is(Tokens.FALSE):
+            self.compile_keyword(Tokens.FALSE)
+            self.vmw.write_push(Segment.CONST, 0)
         elif self.next_type_is(TokenType.IDENTIFIER):
-
             if self.next_is(Tokens.LEFT_BOX_BRACKET, idx=1):
+                # TODO array
                 self.compile_var_name()
                 self.compile_symbol(Tokens.LEFT_BOX_BRACKET)
                 self.compile_expression()
@@ -334,9 +388,14 @@ class CompilationEngine():
             self.compile_symbol(Tokens.LEFT_ROUND_BRACKET)
             self.compile_expression()
             self.compile_symbol(Tokens.RIGHT_ROUND_BRACKET)
-        elif self.next_is([Tokens.TILDE, Tokens.MINUS]):
-            self.compile_symbol([Tokens.TILDE, Tokens.MINUS])
+        elif self.next_is(Tokens.TILDE):
+            self.compile_symbol(Tokens.TILDE)
             self.compile_term()
+            self.vmw.write_arithmetic(Command.NOT)
+        elif self.next_is(Tokens.MINUS):
+            self.compile_symbol(Tokens.MINUS)
+            self.compile_term()
+            self.vmw.write_arithmetic(Command.NEG)
         else:
             self.raise_syntax_error('')
         self.write_element_end('term')

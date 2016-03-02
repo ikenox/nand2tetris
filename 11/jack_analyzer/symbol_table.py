@@ -14,6 +14,8 @@ class SymbolTable:
                 self.type = identifier_type
                 self.kind = kind
                 self.index = index
+        print "==================="
+        print ">>>define", name, identifier_type, kind, self.var_count(kind)
 
         if kind == IdentifierKind.STATIC:
             self.static_table[name] = Identifier(identifier_type, kind, self.var_count(kind))
@@ -25,6 +27,11 @@ class SymbolTable:
             self.var_table[name] = Identifier(identifier_type, kind, self.var_count(kind))
         else:
             raise Exception('Unknown kind')
+
+        print "arg:",self.arg_table
+        print "static:",self.static_table
+        print "field:",self.field_table
+        print "var:",self.var_table
 
     def start_subroutine(self):
         self.arg_table = {}
