@@ -192,23 +192,53 @@ class CompilationEngine():
             self.write_element_start('letStatement')
             self.compile_keyword(Tokens.LET)
             let_var = self.compile_var_name(let=True).token
+
             if self.next_is(Tokens.LEFT_BOX_BRACKET):
                 self.compile_symbol(Tokens.LEFT_BOX_BRACKET)
-                self.compile_expression()
-                # TODO let list[i]
+                self.compile_expression()   # i
                 self.compile_symbol(Tokens.RIGHT_BOX_BRACKET)
-            self.compile_symbol(Tokens.EQUAL)
-            self.compile_expression()
-            self.compile_symbol(Tokens.SEMI_COLON)
+                self.compile_symbol(Tokens.EQUAL)
+
+                # base address
+                kind = self.symbol_table.kind_of(let_var)
+                if kind == IdentifierKind.ARG:
+                    self.vmw.write_push(Segment.ARG, self.symbol_table.index_of(let_var))
+                elif kind == IdentifierKind.VAR:
+                    self.vmw.write_push(Segment.LOCAL, self.symbol_table.index_of(let_var))
+                elif kind == IdentifierKind.FIELD:
+                    self.vmw.write_push(Segment.THIS, self.symbol_table.index_of(let_var))
+                elif kind == IdentifierKind.STATIC:
+                    # TODO static
+                    pass
+
+                # temp_1 <- base + i
+                self.vmw.write_arithmetic(Command.ADD)
+                self.vmw.write_pop(Segment.TEMP, 1)
+
+                # set THAT <- base+i
+                self.vmw.write_push(Segment.TEMP, 1)
+                self.vmw.write_pop(Segment.POINTER, 1)
+
+                # value
+                self.compile_expression()
+
+                self.vmw.write_pop(Segment.THAT, 0)
+                self.compile_symbol(Tokens.SEMI_COLON)
+
+            else:
+                self.compile_symbol(Tokens.EQUAL)
+                self.compile_expression()
+                self.compile_symbol(Tokens.SEMI_COLON)
+                kind = self.symbol_table.kind_of(let_var)
+                if kind == IdentifierKind.VAR:
+                    self.vmw.write_pop(Segment.LOCAL, self.symbol_table.index_of(let_var))
+                elif kind == IdentifierKind.ARG:
+                    self.vmw.write_pop(Segment.ARG, self.symbol_table.index_of(let_var))
+                elif kind == IdentifierKind.FIELD:
+                    self.vmw.write_pop(Segment.THIS, self.symbol_table.index_of(let_var))
+                    # TODO static
+
             self.write_element_end('letStatement')
-            kind = self.symbol_table.kind_of(let_var)
-            if kind == IdentifierKind.VAR:
-                self.vmw.write_pop(Segment.LOCAL, self.symbol_table.index_of(let_var))
-            elif kind == IdentifierKind.ARG:
-                self.vmw.write_pop(Segment.ARG, self.symbol_table.index_of(let_var))
-            elif kind == IdentifierKind.FIELD:
-                self.vmw.write_pop(Segment.THIS, self.symbol_table.index_of(let_var))
-                # TODO static
 
         elif self.next_is(Tokens.IF):
             self.write_element_start('ifStatement')
@@ -232,7 +262,6 @@ class CompilationEngine():
                 self.compile_symbol(Tokens.RIGHT_CURLY_BRACKET)
             self.vmw.write_label(l2)
             self.write_element_end('ifStatement')
-
 
         elif self.next_is(Tokens.WHILE):
             self.write_element_start('whileStatement')
@@ -391,10 +420,13 @@ class CompilationEngine():
             self.vmw.write_push(Segment.CONST, 0)
         elif self.next_type_is(TokenType.IDENTIFIER):
             if self.next_is(Tokens.LEFT_BOX_BRACKET, idx=1):
-                # TODO array
-                self.compile_var_name()
+                var_name = self.compile_var_name().token
                 self.compile_symbol(Tokens.LEFT_BOX_BRACKET)
                 self.compile_expression()
+
+                self.vmw.write_arithmetic(Command.ADD)
+                self.vmw.write_pop(Segment.POINTER, 1)
+                self.vmw.write_push(Segment.THAT, 0)
                 self.compile_symbol(Tokens.RIGHT_BOX_BRACKET)
             elif self.next_is([Tokens.LEFT_ROUND_BRACKET, Tokens.DOT], idx=1):
                 self.compile_subroutine_call()
@@ -498,7 +530,13 @@ class CompilationEngine():
     def compile_string_constant(self):
         self.tokenizer.advance()
         if isinstance(self.tokenizer.current_token, StringConstant):
+            string = self.tokenizer.current_token.token
             self.write_element('stringConstant', self.tokenizer.current_token.token_escaped)
+            self.vmw.write_push(Segment.CONST, len(string))
+            self.vmw.write_call('String.new', 1)
+            for c in string:
+                self.vmw.write_push(Segment.CONST, ord(c))
+                self.vmw.write_call('String.appendChar', 2)
         else:
             self.raise_syntax_error('')
 
