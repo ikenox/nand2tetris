@@ -113,10 +113,12 @@ class CompilationEngine():
         self.write_identifier_info('category: class')
         return self.compile_identifier()
 
-    def compile_var_name(self, declaration=False, type=None, kind=None, let=False):
+    def compile_var_name(self, declaration=False, type=None, kind=None, let=False, call=False):
         if declaration:
             self.symbol_table.define(self.tokenizer.see_next().token, type, kind)
         elif let:
+            pass
+        elif call:
             pass
         else:
             kind = self.symbol_table.kind_of(self.tokenizer.see_next().token)
@@ -322,7 +324,7 @@ class CompilationEngine():
         else:
             identifier_str = self.tokenizer.see_next().token
             if self.symbol_table.kind_of(identifier_str):
-                instance_name = self.compile_var_name().token
+                instance_name = self.compile_var_name(call=True).token
                 self.compile_symbol(Tokens.DOT)
                 subroutinename = self.compile_subroutine_name().token
                 self.compile_symbol(Tokens.LEFT_ROUND_BRACKET)
