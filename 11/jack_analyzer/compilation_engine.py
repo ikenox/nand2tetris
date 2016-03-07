@@ -219,7 +219,7 @@ class CompilationEngine():
                 elif kind == IdentifierKind.STATIC:
                     self.vmw.write_push(Segment.STATIC, self.symbol_table.index_of(let_var))
 
-                # temp_1 <- base + i
+                # temp_2 <- base + i
                 self.vmw.write_arithmetic(Command.ADD)
                 self.vmw.write_pop(Segment.TEMP, 2)
 
