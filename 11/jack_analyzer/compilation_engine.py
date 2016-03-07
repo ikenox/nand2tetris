@@ -221,14 +221,14 @@ class CompilationEngine():
 
                 # temp_1 <- base + i
                 self.vmw.write_arithmetic(Command.ADD)
-                self.vmw.write_pop(Segment.TEMP, 1)
-
-                # set THAT <- base+i
-                self.vmw.write_push(Segment.TEMP, 1)
-                self.vmw.write_pop(Segment.POINTER, 1)
+                self.vmw.write_pop(Segment.TEMP, 2)
 
                 # value
                 self.compile_expression()
+
+                # set THAT <- base+i
+                self.vmw.write_push(Segment.TEMP, 2)
+                self.vmw.write_pop(Segment.POINTER, 1)
 
                 self.vmw.write_pop(Segment.THAT, 0)
                 self.compile_symbol(Tokens.SEMI_COLON)
@@ -463,7 +463,6 @@ class CompilationEngine():
         return self.tokenizer.see_next().type == token_type
 
     def compile_type(self):
-
         type_token = self.tokenizer.see_next()
 
         if self.next_is([Tokens.INT, Tokens.CHAR, Tokens.BOOLEAN]):
