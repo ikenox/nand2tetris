@@ -95,6 +95,10 @@ class CompilationEngine():
             self.compile_type()
         subroutine_name = self.compile_subroutine_name().token
         self.compile_symbol(Tokens.LEFT_ROUND_BRACKET)
+
+        if token == Tokens.METHOD:
+            self.symbol_table.define('$this',self.compiled_class_name,IdentifierKind.ARG)
+
         self.compile_parameter_list()
         self.compile_symbol(Tokens.RIGHT_ROUND_BRACKET)
         self.compile_subroutine_body(subroutine_name, token)
@@ -123,8 +127,7 @@ class CompilationEngine():
             elif kind == IdentifierKind.FIELD:
                 self.vmw.write_push(Segment.THIS, self.symbol_table.index_of(self.tokenizer.see_next().token))
             elif kind == IdentifierKind.STATIC:
-                # TODO static
-                pass
+                self.vmw.write_push(Segment.STATIC, self.symbol_table.index_of(self.tokenizer.see_next().token))
 
         self.write_identifier_info('declaration: %s, kind: %s, index: %d' % (
             declaration, self.symbol_table.kind_of(self.tokenizer.see_next().token),
@@ -152,6 +155,8 @@ class CompilationEngine():
     def compile_subroutine_body(self, subroutine_name, subroutine_dec_token):
         self.write_element_start('subroutineBody')
 
+        print subroutine_name,subroutine_dec_token
+
         self.compile_symbol(Tokens.LEFT_CURLY_BRACKET)
         local_num = 0
         while self.next_is(Tokens.VAR):
@@ -177,6 +182,10 @@ class CompilationEngine():
 
         self.write_element_end('subroutineBody')
 
+        print "========="
+        for key in self.symbol_table.arg_table:
+            print self.symbol_table.arg_table[key].type,key,"kind:",self.symbol_table.arg_table[key].kind,"index:",self.symbol_table.arg_table[key].index
+
         return local_num
 
     def compile_statements(self):
@@ -195,7 +204,7 @@ class CompilationEngine():
 
             if self.next_is(Tokens.LEFT_BOX_BRACKET):
                 self.compile_symbol(Tokens.LEFT_BOX_BRACKET)
-                self.compile_expression()   # i
+                self.compile_expression()  # i
                 self.compile_symbol(Tokens.RIGHT_BOX_BRACKET)
                 self.compile_symbol(Tokens.EQUAL)
 
@@ -208,8 +217,7 @@ class CompilationEngine():
                 elif kind == IdentifierKind.FIELD:
                     self.vmw.write_push(Segment.THIS, self.symbol_table.index_of(let_var))
                 elif kind == IdentifierKind.STATIC:
-                    # TODO static
-                    pass
+                    self.vmw.write_push(Segment.STATIC, self.symbol_table.index_of(let_var))
 
                 # temp_1 <- base + i
                 self.vmw.write_arithmetic(Command.ADD)
@@ -236,7 +244,8 @@ class CompilationEngine():
                     self.vmw.write_pop(Segment.ARG, self.symbol_table.index_of(let_var))
                 elif kind == IdentifierKind.FIELD:
                     self.vmw.write_pop(Segment.THIS, self.symbol_table.index_of(let_var))
-                    # TODO static
+                elif kind == IdentifierKind.STATIC:
+                    self.vmw.write_pop(Segment.STATIC, self.symbol_table.index_of(let_var))
 
             self.write_element_end('letStatement')
 
@@ -325,7 +334,7 @@ class CompilationEngine():
                 elif kind == IdentifierKind.FIELD:
                     self.vmw.write_push(Segment.THIS, self.symbol_table.index_of(instance_name))
                 elif kind == IdentifierKind.STATIC:
-                    pass  # TODO static
+                    self.vmw.write_push(Segment.STATIC, self.symbol_table.index_of(instance_name))
                 argnum = self.compile_expression_list()
                 self.compile_symbol(Tokens.RIGHT_ROUND_BRACKET)
                 self.vmw.write_call("%s.%s" % (self.symbol_table.type_of(instance_name), subroutinename), argnum + 1)
@@ -420,6 +429,7 @@ class CompilationEngine():
             self.vmw.write_push(Segment.CONST, 0)
         elif self.next_type_is(TokenType.IDENTIFIER):
             if self.next_is(Tokens.LEFT_BOX_BRACKET, idx=1):
+
                 var_name = self.compile_var_name().token
                 self.compile_symbol(Tokens.LEFT_BOX_BRACKET)
                 self.compile_expression()
